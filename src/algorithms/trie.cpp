@@ -1,99 +1,125 @@
+// C++ program to demonstrate auto-complete feature
+// using Trie data structure.
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
+// Alphabet size (# of symbols)
+#define ALPHABET_SIZE (26)
+// Converts key current character into index
+// use only 'a' through 'z' and lower case
+#define CHAR_TO_INDEX(c) ((int)c - (int)'a')
 using namespace std;
-
+// trie node
 struct TrieNode {
-  
-    // Array for child nodes of each node
-    TrieNode* child[26];
+	struct TrieNode* children[ALPHABET_SIZE];
 
-    // for end of word
-    bool wordEnd;
-
-    TrieNode() {
-        wordEnd = false;
-        for (int i = 0; i < 26; i++) {
-            child[i] = nullptr;
-        }
-    }
+	// isWordEnd is true if the node represents
+	// end of a word
+	bool isWordEnd;
 };
 
-// Method to insert a key into the Trie
-void insertKey(TrieNode* root, const string& key) {
-  
-    // Initialize the curr pointer with the root node
-    TrieNode* curr = root;
+// Returns new trie node (initialized to NULLs)
+struct TrieNode* getNode(void)
+{
+	struct TrieNode* pNode = new TrieNode;
+	pNode->isWordEnd = false;
 
-    // Iterate across the length of the string
-    for (char c : key) {
-      
-        // Check if the node exists for the 
-        // current character in the Trie
-        if (curr->child[c - 'a'] == nullptr) {
-          
-            // If node for current character does 
-            // not exist then make a new node
-            TrieNode* newNode = new TrieNode();
-          
-            // Keep the reference for the newly
-            // created node
-            curr->child[c - 'a'] = newNode;
-        }
-      
-        // Move the curr pointer to the
-        // newly created node
-        curr = curr->child[c - 'a'];
-    }
+	for (int i = 0; i < ALPHABET_SIZE; i++)
+		pNode->children[i] = NULL;
 
-    // Mark the end of the word
-    curr->wordEnd = true;
+	return pNode;
 }
 
-// Method to search a key in the Trie
-bool searchKey(TrieNode* root, const string& key) {
-  
-    // Initialize the curr pointer with the root node
-    TrieNode* curr = root;
+// If not present, inserts key into trie. If the
+// key is prefix of trie node, just marks leaf node
+void insert(struct TrieNode* root, const string key)
+{
+	struct TrieNode* pCrawl = root;
 
-    // Iterate across the length of the string
-    for (char c : key) {
-      
-        // Check if the node exists for the 
-        // current character in the Trie
-        if (curr->child[c - 'a'] == nullptr) 
-            return false;
-        
-        // Move the curr pointer to the 
-        // already existing node for the 
-        // current character
-        curr = curr->child[c - 'a'];
-    }
+	for (int level = 0; level < key.length(); level++) {
+		int index = CHAR_TO_INDEX(key[level]);
+		if (!pCrawl->children[index])
+			pCrawl->children[index] = getNode();
 
-    // Return true if the word exists 
-    // and is marked as ending
-    return curr->wordEnd;
+		pCrawl = pCrawl->children[index];
+	}
+
+	// mark last node as leaf
+	pCrawl->isWordEnd = true;
 }
 
-int main() {
-  
-    // Create am example Trie
-    TrieNode* root = new TrieNode();
-    vector<string> arr = 
-      {"and", "ant", "do", "geek", "dad", "ball"};
-    for (const string& s : arr) {
-        insertKey(root, s);
-    }
+// Returns 0 if current node has a child
+// If all children are NULL, return 1.
+bool isLastNode(struct TrieNode* root)
+{
+	for (int i = 0; i < ALPHABET_SIZE; i++)
+		if (root->children[i])
+			return 0;
+	return 1;
+}
 
-    // One by one search strings
-    vector<string> searchKeys = {"do", "gee", "bat"};
-    for (string& s : searchKeys) {
-        cout << "Key : " << s << "\n";
-        if (searchKey(root, s)) 
-            cout << "Present\n";
-        else 
-            cout << "Not Present\n";        
-    }
-  
-    return 0;
+// Recursive function to print auto-suggestions for given
+// node.
+void suggestionsRec(struct TrieNode* root,
+					string currPrefix)
+{
+	// found a string in Trie with the given prefix
+	if (root->isWordEnd)
+		cout << currPrefix << endl;
+
+	for (int i = 0; i < ALPHABET_SIZE; i++)
+		if (root->children[i]) {
+			// child node character value
+			char child = 'a' + i;
+			suggestionsRec(root->children[i],
+						currPrefix + child);
+		}
+}
+
+// print suggestions for given query prefix.
+int printAutoSuggestions(TrieNode* root, const string query)
+{
+	struct TrieNode* pCrawl = root;
+	for (char c : query) {
+		int ind = CHAR_TO_INDEX(c);
+
+		// no string in the Trie has this prefix
+		if (!pCrawl->children[ind])
+			return 0;
+
+		pCrawl = pCrawl->children[ind];
+	}
+	// If prefix is present as a word, but
+	// there is no subtree below the last
+	// matching node.
+	if (isLastNode(pCrawl)) {
+		cout << query << endl;
+		return -1;
+	}
+	suggestionsRec(pCrawl, query);
+	return 1;
+}
+
+// Driver Code
+int main()
+{
+	struct TrieNode* root = getNode();
+	insert(root, "hello");
+	insert(root, "dog");
+	insert(root, "hell");
+	insert(root, "cat");
+	insert(root, "a");
+	insert(root, "hel");
+	insert(root, "help");
+	insert(root, "helps");
+	insert(root, "helping");
+	int comp = printAutoSuggestions(root, "hel");
+
+	if (comp == -1)
+		cout << "No other strings found with this prefix\n";
+
+	else if (comp == 0)
+		cout << "No string found with this prefix\n";
+
+	return 0;
 }
